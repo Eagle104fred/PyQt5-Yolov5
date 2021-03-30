@@ -7,12 +7,9 @@ import sys
 import clr
 #C#库的地址
 clr.AddReference(r'C:\Users\64504\Desktop\ptzcontrol.csharp\ConsoleApplication1\bin\Debug\SDK.IPC.dll')
-#clr.AddReference(r'D:\C#\Code\python\pythoncs.dll')
 from SDK.IPC import  *
 from System import  *
 from System.Threading import *
-
-from myDetect import my_detect_api
 
 
 import argparse
@@ -36,28 +33,10 @@ class appGUI(QMainWindow):
 
     def __init__(self):
         super().__init__()
-        
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--weights', nargs='+', type=str, default='yolov5s.pt', help='model.pt path(s)')
-        parser.add_argument('--source', type=str, default='data/images', help='source')  # file/folder, 0 for webcam
-        parser.add_argument('--img-size', type=int, default=640, help='inference size (pixels)')
-        parser.add_argument('--conf-thres', type=float, default=0.25, help='object confidence threshold')
-        parser.add_argument('--iou-thres', type=float, default=0.45, help='IOU threshold for NMS')
-        parser.add_argument('--device', default='cuda:0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
-        parser.add_argument('--view-img', action='store_true', help='display results')
-        parser.add_argument('--save-txt', action='store_true', help='save results to *.txt')
-        parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
-        parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --class 0, or --class 0 2 3')
-        parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
-        parser.add_argument('--augment', action='store_true', help='augmented inference')
-        parser.add_argument('--update', action='store_true', help='update all models')
-        parser.add_argument('--project', default='runs/detect', help='save results to project/name')
-        parser.add_argument('--name', default='exp', help='save results to project/name')
-        parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
-        opt = parser.parse_args()
+
         
         #self.video = video_stream()
-        self.yolo_api = my_detect_api()
+        
         
         self.paddingX = 100
         self.paddingY = 130
@@ -72,7 +51,8 @@ class appGUI(QMainWindow):
         self.scale = 1.6
         self.midX = (self.vWidth*self.scale)/2
         self.midY = (self.vHeight*self.scale)/2
-        
+
+        self.cam_speed = 10#相机转动速度
         self.trackX = 0
         self.trackY = 0
         self.predList = []#保存每一帧检测到的坐标
@@ -80,24 +60,22 @@ class appGUI(QMainWindow):
         self.tracked_X = 0
         self.tracked_Y = 0
         
-        
+        # C#相机库
         ipc = IPCControl()
-        self.cam_speed=20
-
         ipcKey = "key11111111111111111111111111111111111"
         ipcConParam = IPCConnectParam("183.192.69.170", 7701, "admin", "SMUwm_007")
         self.ipcCon = ipc.GetPtzConnecttedControl(1,ipcConParam,ipcKey)
         #ipcCon.Move(EnumPtzMoveType.moveleft);
-        self.ipcCon.Move(EnumPtzMoveType.movestop);
-        
+        self.ipcCon.Move(EnumPtzMoveType.movestop)#让相机初始化时发出一个停止转动的命令
+        #qt ui部分
         self.init_gui()
         
 
 
     def detect(self):
-        '''获取输出文件夹，输入源，权重，参数与等信息'''
+        
         source=r'rtsp://admin:SMUwm_007@192.168.1.110/id=1'
-        weights= r'./yolov5s.pt'
+        weights= r'./yolov5x.pt'
         view_img=True
         imgsz=640
             #= opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size
@@ -179,7 +157,6 @@ class appGUI(QMainWindow):
             pred = non_max_suppression(pred, 0.25, 0.45, classes=None, agnostic=False)
             t2 = time_synchronized()
 
-
             # Process detections
             # 检测每一帧图片
             for i, det in enumerate(pred):  # detections per image
@@ -251,7 +228,7 @@ class appGUI(QMainWindow):
                                 #print('tracked_Y',self.tracked_Y)
                             else:
                                 checkTracked=False
-                            
+                        #存储当前帧的检测框与下一帧关联起来
                         predBox=(c1,c2)
                         self.predList.append(predBox)
                         #print(c1)
@@ -277,7 +254,7 @@ class appGUI(QMainWindow):
                 #调整显示的像素排列
                 cv2.cvtColor(im0, cv2.COLOR_BGR2RGB, im0)
                 self.show_frame(im0)
-                
+
     def init_gui(self):
         # Height, Width for QMainWindow
       
@@ -348,15 +325,13 @@ class appGUI(QMainWindow):
         self.label_img.setPixmap(pixMap)
     
     def mousePressEvent(self, event):
+
+        # 鼠标坐标
         self.setMouseTracking(True)
         s = event.windowPos()
         x=s.x()-self.paddingX;
         y=s.y()-self.paddingY;
-        
-        
         #由于视频像素是1920*1080 因此对应qt界面1200*900的比例是1.6
-        #print('origin',x,y)
-        #鼠标坐标
         x*=self.scale
         y*=self.scale
         print(x,y)
@@ -389,10 +364,7 @@ class appGUI(QMainWindow):
                     print('tracked_X',self.tracked_X)
                     print('tracked_Y',self.tracked_Y)
                     break
-                    
-                
-            
-            
+
             '''
             while x!=self.midW:
                 if x-self.midW<0:
@@ -405,10 +377,6 @@ class appGUI(QMainWindow):
                 ipcCon.Release()
                 print(x,y)
             '''
-        
-
-
-
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
