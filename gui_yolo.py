@@ -28,7 +28,14 @@ from utils.general import check_img_size, check_requirements, check_imshow, non_
 from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized
 
+cam_ip = "183.192.69.170"
+camBG_port = "7502"
+camCS_port = "7702"
+cam_port = camBG_port
+cam_user = "admin"
+cam_psw = "SMUwm_007"
 
+weights= r'./ship-lin.pt'
 class appGUI(QMainWindow):
 
     def __init__(self):
@@ -36,8 +43,7 @@ class appGUI(QMainWindow):
 
         
         #self.video = video_stream()
-        
-        
+
         self.paddingX = 100
         self.paddingY = 130
         self.vWidth = 1200
@@ -45,37 +51,38 @@ class appGUI(QMainWindow):
         
         self.mw_height = 900
         self.mw_width = 1400
-        
-        
-        
-        self.scale = 1.6
+
+        # 由于视频像素是1920*1080 因此对应qt界面1200*900的比例是1.6
+        self.scale = 1.6#监控像素缩放到ui像素比例
+        #相机中心点
         self.midX = (self.vWidth*self.scale)/2
         self.midY = (self.vHeight*self.scale)/2
 
-        self.cam_speed = 10#相机转动速度
+        self.cam_speed = 1#相机转动速度
+        #检测框坐标
         self.trackX = 0
         self.trackY = 0
         self.predList = []#保存每一帧检测到的坐标
         self.TRACKFLAG = False
+        #上一帧坐标
         self.tracked_X = 0
         self.tracked_Y = 0
         
         # C#相机库
         ipc = IPCControl()
         ipcKey = "key11111111111111111111111111111111111"
-        ipcConParam = IPCConnectParam("183.192.69.170", 7701, "admin", "SMUwm_007")
+        #ipcConParam = IPCConnectParam("183.192.69.170", 7701, "admin", "SMUwm_007")
+        ipcConParam = IPCConnectParam(cam_ip,int(cam_port)-1,cam_user,cam_psw)
         self.ipcCon = ipc.GetPtzConnecttedControl(1,ipcConParam,ipcKey)
         #ipcCon.Move(EnumPtzMoveType.moveleft);
         self.ipcCon.Move(EnumPtzMoveType.movestop)#让相机初始化时发出一个停止转动的命令
         #qt ui部分
         self.init_gui()
-        
-
 
     def detect(self):
-        
-        source=r'rtsp://admin:SMUwm_007@192.168.1.110/id=1'
-        weights= r'./yolov5x.pt'
+        source = r'rtsp://'+cam_user+r':'+cam_psw+r'@'+cam_ip+r':'+cam_port+r'/id=1'
+        #source=r'rtsp://admin:SMUwm_007@192.168.1.110/id=1'
+        #weights= r'./yolov5x.pt'
         view_img=True
         imgsz=640
             #= opt.source, opt.weights, opt.view_img, opt.save_txt, opt.img_size
@@ -97,8 +104,6 @@ class appGUI(QMainWindow):
             # 设置float16
             model.half()  # to FP16
 
-        
-       
         # Set Dataloader
         # 通过不同的输入源来设置不同的数据加载方式
         vid_path, vid_writer = None, None
@@ -228,6 +233,7 @@ class appGUI(QMainWindow):
                                 #print('tracked_Y',self.tracked_Y)
                             else:
                                 checkTracked=False
+                                self.ipcCon.Move(EnumPtzMoveType.movestop)
                         #存储当前帧的检测框与下一帧关联起来
                         predBox=(c1,c2)
                         self.predList.append(predBox)
