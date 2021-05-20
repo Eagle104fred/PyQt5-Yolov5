@@ -13,10 +13,10 @@ from utils.torch_utils import select_device, load_classifier, time_synchronized
 import sys
 import clr
 #C#库的地址
-clr.AddReference(r'C:\Users\64504\Desktop\ptzcontrol.csharp\ConsoleApplication1\bin\Debug\SDK.IPC.dll')
-from SDK.IPC import  *
-from System import  *
-from System.Threading import *
+#clr.AddReference(r'C:\Users\64504\Desktop\ptzcontrol.csharp\ConsoleApplication1\bin\Debug\SDK.IPC.dll')
+#from SDK.IPC import  *
+#from System import  *
+#from System.Threading import *
 
 
 import argparse
